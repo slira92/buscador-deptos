@@ -490,15 +490,26 @@ def escribir_dashboard(avisos, meta):
     payload = {"meta": meta, "avisos": sorted(avisos.values(), key=lambda a: a["total_clp"])}
     datos = json.dumps(payload, ensure_ascii=False).replace("</", "<\\/")
     html = PLANTILLA.read_text(encoding="utf-8").replace("/*__DATOS__*/null", datos, 1)
-    tmp = DASHBOARD.with_suffix(".tmp")
-    tmp.write_text(html, encoding="utf-8")
-    tmp.replace(DASHBOARD)
+    escribir_seguro(DASHBOARD, html)
+
+
+def escribir_seguro(destino, texto):
+    """Escribe via .tmp + replace. OneDrive bloquea a ratos el archivo mientras lo sincroniza: reintenta ~20 s."""
+    tmp = destino.with_suffix(".tmp")
+    tmp.write_text(texto, encoding="utf-8")
+    for i in range(20):
+        try:
+            tmp.replace(destino)
+            return
+        except PermissionError:
+            time.sleep(1)
+    log(f"  {destino.name} sigue bloqueado; escribo directo")
+    destino.write_text(texto, encoding="utf-8")
+    tmp.unlink(missing_ok=True)
 
 
 def guardar(avisos):
-    tmp = AVISOS_JSON.with_suffix(".tmp")
-    tmp.write_text(json.dumps(avisos, ensure_ascii=False, indent=1), encoding="utf-8")
-    tmp.replace(AVISOS_JSON)
+    escribir_seguro(AVISOS_JSON, json.dumps(avisos, ensure_ascii=False, indent=1))
 
 
 def publicar_web(cfg):
