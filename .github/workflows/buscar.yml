@@ -47,7 +47,16 @@ jobs:
           echo "DASHBOARD_URL=https://${GITHUB_REPOSITORY_OWNER,,}.github.io/${GITHUB_REPOSITORY#*/}/" >> "$GITHUB_ENV"
 
       - name: Buscar
-        run: python buscador.py
+        run: |
+          python buscador.py
+          # Diagnostico: que responde el portal a esta IP
+          python - <<'EOF'
+          import requests, re
+          from buscador import HEADERS
+          r = requests.get("https://www.portalinmobiliario.com/arriendo/departamento/las-condes-metropolitana", headers=HEADERS, timeout=30)
+          t = re.search(r"<title[^>]*>(.*?)</title>", r.text, re.S)
+          print("DIAG", r.status_code, r.url, len(r.text), t.group(1).strip()[:100] if t else None)
+          EOF
 
       - name: Guardar datos
         if: always()

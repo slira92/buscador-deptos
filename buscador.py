@@ -113,7 +113,12 @@ def estado_nordic(html):
         raise Bloqueado("la pagina no trae __NORDIC_RENDERING_CTX__ (posible captcha)")
     body = m.group(1)
     d, _ = json.JSONDecoder().raw_decode(body[body.find("{"):])
-    return d["appProps"]["pageProps"]["initialState"]
+    pp = (d.get("appProps") or {}).get("pageProps") or {}
+    if "initialState" not in pp:
+        titulo = re.search(r"<title[^>]*>(.*?)</title>", html, re.S)
+        raise Bloqueado(f"pagina inesperada '{titulo.group(1).strip()[:80] if titulo else '?'}' "
+                        f"(claves: {', '.join(list(pp)[:10])})")
+    return pp["initialState"]
 
 
 def recorrer(o):
