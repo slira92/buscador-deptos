@@ -14,8 +14,9 @@
 
   "limites_por_comuna": {
     "_nota": "lon_min = no mas al poniente que esa longitud. -70.6040 ~ Av. Los Leones: deja dentro Plaza Las Lilas (-70.594) y El Bosque (-70.602). Para ser mas estricto usa -70.598 (solo Las Lilas / Tobalaba).",
-    "Providencia": { "lon_min": -70.6040 },
-    "Las Condes": {}
+    "_nota_sur": "lat_min = limite sur de la comuna, para descartar avisos mal clasificados (ej: deptos en Macul o Nunoa publicados como Providencia).",
+    "Providencia": { "lon_min": -70.6040, "lat_min": -33.455 },
+    "Las Condes": { "lat_min": -33.445 }
   },
 
   "pesos_puntaje": {
