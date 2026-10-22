@@ -17,9 +17,11 @@ import json
 import os
 import random
 import re
+import shutil
 import smtplib
 import subprocess
 import sys
+import tempfile
 import time
 from datetime import datetime, timedelta
 from email.mime.multipart import MIMEMultipart
@@ -499,6 +501,30 @@ def guardar(avisos):
     tmp.replace(AVISOS_JSON)
 
 
+def publicar_web(cfg):
+    """Sube dashboard.html a la rama gh-pages del repo (GitHub Pages) como un unico commit que se reescribe."""
+    pub = cfg.get("publicar_github") or {}
+    if not pub.get("activo") or not DASHBOARD.exists():
+        return
+    tmp = Path(tempfile.mkdtemp(prefix="buscador_web_"))
+    try:
+        shutil.copy(DASHBOARD, tmp / "index.html")
+        (tmp / ".nojekyll").write_text("")
+        git = ["git", "-C", str(tmp), "-c", "user.name=buscador", "-c", "user.email=buscador@users.noreply.github.com"]
+        flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        for args in (["init", "-q", "-b", "gh-pages"], ["add", "-A"], ["commit", "-qm", f"dashboard {ahora()}"],
+                     ["push", "-qf", f"https://github.com/{pub['repo']}.git", "gh-pages"]):
+            r = subprocess.run(git + args, capture_output=True, text=True, timeout=180, creationflags=flags)
+            if r.returncode:
+                log(f"No pude publicar en GitHub ({args[0]}): {r.stderr.strip()[:200]}")
+                return
+        log(f"Dashboard publicado en {pub.get('url', pub['repo'])}")
+    except Exception as e:
+        log(f"No pude publicar en GitHub: {e.__class__.__name__} {e}")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def clp(n):
     return "$" + f"{n:,.0f}".replace(",", ".") if n is not None else "-"
 
@@ -571,7 +597,7 @@ def correo(cfg, asunto, html):
     if not usuario or not clave:
         log("Correo activo pero falta SMTP_USUARIO o SMTP_PASSWORD; no se envia")
         return
-    url = os.environ.get("DASHBOARD_URL")
+    url = os.environ.get("DASHBOARD_URL") or (cfg.get("publicar_github") or {}).get("url")
     if url:
         html += f'<p style="font-family:Arial,sans-serif"><a href="{url}">Abrir dashboard con todas las opciones →</a></p>'
     msg = MIMEMultipart("alternative")
@@ -655,6 +681,7 @@ def main():
         escribir_dashboard(avisos, meta)
         guardar({**avisos, "_meta": meta})
         log("dashboard.html regenerado")
+        publicar_web(cfg)
         return
 
     if not tomar_lock():
@@ -752,6 +779,7 @@ def main():
             f"{len(nuevos)} nuevos, {len(bajas)} bajas de precio, {dados_de_baja} dados de baja "
             f"({corrida['segundos']} s)")
         notificar(cfg, nuevos, bajas, meta, carga_inicial)
+        publicar_web(cfg)
         if bloqueado and cfg["notificaciones"].get("windows", True):
             toast("Buscador de deptos: el portal bloqueó la consulta", "Se reintentará en la próxima ejecución.")
     finally:

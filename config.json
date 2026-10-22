@@ -34,6 +34,13 @@
   "pausa_entre_requests_seg": [1.5, 3.5],
   "refrescar_detalle_cada_dias": 7,
 
+  "publicar_github": {
+    "_nota": "Tras cada pasada sube dashboard.html a la rama gh-pages del repo (link para compartir).",
+    "activo": true,
+    "repo": "slira92/buscador-deptos",
+    "url": "https://slira92.github.io/buscador-deptos/"
+  },
+
   "notificaciones": {
     "windows": true,
     "correo": {

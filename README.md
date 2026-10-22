@@ -66,28 +66,28 @@ py buscador.py --solo-dashboard   # recalcula con config.json sin scrapear (ej: 
 py buscador.py --probar-aviso     # manda una notificación (y correo, si está activo) de prueba
 ```
 
-## En la nube (GitHub)
+## Link para compartir (GitHub Pages)
 
-El buscador corre en GitHub Actions (`.github/workflows/buscar.yml`) cada 2 horas entre ~7 y 21 h,
-aunque el PC esté apagado, y publica el dashboard en GitHub Pages (`https://<usuario>.github.io/<repo>/`).
+Después de cada pasada el buscador sube el dashboard a https://slira92.github.io/buscador-deptos/
+(rama `gh-pages`, un solo commit que se reescribe). Se configura en `config.json` → `publicar_github`.
 
-- El estado (`avisos.json`) se guarda en la rama `datos`, que se reescribe en cada pasada.
-- Correo: secretos del repositorio `SMTP_USUARIO`, `SMTP_PASSWORD` (contraseña de aplicación de Gmail)
-  y `CORREO_DESTINO` (uno o más correos separados por coma). Sin `SMTP_PASSWORD` no se envía nada.
-- Correr a mano: pestaña **Actions** → "Buscar deptos" → **Run workflow**.
-- GitHub pausa los workflows programados de repos sin actividad por 60 días; si pasa, se reactivan
-  con un clic en la pestaña Actions.
-- Los cambios de `config.json` se aplican haciendo commit y push al repo.
+Por qué no corre en la nube: Mercado Libre (dueño de Portal Inmobiliario) manda las consultas que
+vienen de servidores (GitHub, AWS, etc.) a una verificación de cuenta, y su API oficial exige una
+app de desarrollador autorizada. Desde una conexión de casa u oficina funciona normal; por eso
+la búsqueda la hace el PC y la nube solo publica.
 
-## Ejecución automática en el PC (respaldo)
+## Ejecución automática en el PC
 
 ```bash
-powershell -ExecutionPolicy Bypass -File instalar_tarea.ps1                 # L-V cada 30 min, 08:00–20:00
+powershell -ExecutionPolicy Bypass -File instalar_tarea.ps1                 # todos los días cada 30 min, 08:00–22:00
+powershell -ExecutionPolicy Bypass -File instalar_tarea.ps1 -SoloSemana     # solo L-V
 powershell -ExecutionPolicy Bypass -File instalar_tarea.ps1 -CadaMinutos 15 # más seguido
 powershell -ExecutionPolicy Bypass -File instalar_tarea.ps1 -Desinstalar    # quitarla
 ```
 
-Corre solo con tu sesión de Windows iniciada. Si el PC está apagado no corre; al prender retoma.
+Corre con tu sesión de Windows iniciada. Si el PC está **suspendido** lo despierta para correr
+(requiere que el plan de energía permita "temporizadores de reactivación"); si está **apagado**
+no corre, y al prenderlo hace la pasada pendiente.
 
 ## Activar correo en el PC (Gmail)
 
