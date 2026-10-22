@@ -65,6 +65,7 @@ main{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;padding:16px 20px
 .b.new{background:var(--accent);color:#fff}
 .b.drop{background:var(--warn);color:#fff}
 .b.gone{background:var(--bad);color:#fff}
+.b.own{background:#6250d6;color:#fff}
 .acts{position:absolute;right:8px;top:8px;display:flex;gap:5px}
 .ib{width:30px;height:30px;border-radius:50%;border:0;background:rgba(255,255,255,.92);color:#222;cursor:pointer;font-size:15px;line-height:30px;padding:0}
 .ib.on.fav{color:var(--star);background:#fff}
@@ -146,6 +147,7 @@ textarea{width:100%;min-height:60px;background:var(--bg);border:1px solid var(--
   <div class="f">
     <span class="chip" id="fEst">Con estac.</span>
     <span class="chip" id="fMasc">Mascotas</span>
+    <span class="chip" id="fDueno" title="Publicado por el dueño (sin corredora)">Solo dueños</span>
     <span class="chip" id="fNuevos">Nuevos 48 h</span>
     <span class="chip" id="fFav">★ Favoritos</span>
     <span class="chip" id="fZona" title="Incluir avisos de Providencia al poniente del límite">Fuera de zona</span>
@@ -232,6 +234,7 @@ function visibles(){
     if(d[0] != null && !F.dorm.some(x => x >= d[0] && x <= d[1])) return false;
     if(F.est && !(a.estacionamientos > 0)) return false;
     if(F.masc && a.mascotas !== 'Sí') return false;
+    if(F.dueno && a.publica !== 'Dueño') return false;
     if(F.nuevos && !(esNuevo(a) || bajo(a))) return false;
     if(F.fav && !fav.has(a.id)) return false;
     if(!F.desc && desc.has(a.id)) return false;
@@ -256,7 +259,14 @@ function badges(a){
   if(bajo(a)) h += '<span class="b drop">BAJÓ PRECIO</span>';
   if(a.multifamily) h += '<span class="b">MULTIFAMILY</span>';
   if(a.amoblado === 'Sí') h += '<span class="b">AMOBLADO</span>';
+  if(a.publica === 'Dueño') h += '<span class="b own">DUEÑO</span>';
+  else if(a.publica === 'Corredor') h += '<span class="b">CORREDOR</span>';
   return h;
+}
+function quienPublica(a){
+  if(!a.publica) return '';
+  const n = a.vendedor && a.vendedor.nombre ? esc(a.vendedor.nombre) : '';
+  return `${a.publica === 'Dueño' ? 'Dueño' : 'Corredor'}${n ? ': ' + n : ''}${a.publica_nota ? ` <span class="est" title="${esc(a.publica_nota)}">⚠</span>` : ''}`;
 }
 function specs(a){
   const s = [`${rng(a.dorm)} D`, `${rng(a.banos)} B`];
@@ -290,6 +300,7 @@ function card(a){
       <div class="ttl" data-open="${a.id}">${esc(a.titulo)}</div>
       <div class="addr">${esc(a.direccion)}${a.metro && a.dist_metro <= 1500 ? ` · ${a.dist_metro} m Metro ${esc(a.metro)}` : ''}</div>
       <div class="specs">${specs(a)}</div>
+      ${a.publica ? `<div class="why2">Publica: ${quienPublica(a)}</div>` : ''}
       ${notas[a.id] ? `<div class="sub">📝 ${esc(notas[a.id])}</div>` : ''}
       <div class="foot"><span>Visto ${hace(a.primera_vez)}${a.publicado?` · publicado ${new Date(a.publicado).toLocaleDateString('es-CL')}`:''}</span>
         <a href="${esc(a.url)}" target="_blank" rel="noopener">Ver aviso ↗</a></div>
@@ -298,13 +309,14 @@ function card(a){
 
 function tabla(r){
   return `<div class="tablewrap"><table><thead><tr>
-    <th></th><th>Título</th><th>Comuna</th><th>Pts</th><th>Total</th><th>Arriendo</th><th>GGCC</th><th>D</th><th>B</th><th>m²</th><th>UF/m²</th><th>vs merc.</th><th>Metro</th><th>Estac.</th><th>Visto</th><th></th></tr></thead><tbody>
+    <th></th><th>Título</th><th>Comuna</th><th>Pts</th><th>Total</th><th>Arriendo</th><th>GGCC</th><th>D</th><th>B</th><th>m²</th><th>UF/m²</th><th>vs merc.</th><th>Metro</th><th>Estac.</th><th>Publica</th><th>Visto</th><th></th></tr></thead><tbody>
     ${r.map(a => `<tr data-id="${a.id}"><td>${fav.has(a.id)?'★':''}${esNuevo(a)?' 🆕':''}</td>
       <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis"><a href="#" data-open="${a.id}">${esc(a.titulo)}</a></td>
       <td>${esc(a.comuna)}</td><td class="n"><b>${a.puntaje ?? '–'}</b></td><td class="n"><b>${clp(a.total_clp)}</b></td><td class="n">${clp(a.precio_clp)}</td>
       <td class="n${a.ggcc_estimado?' est':''}">${clp(a.ggcc_clp)}</td><td class="n">${rng(a.dorm)}</td><td class="n">${rng(a.banos)}</td>
       <td class="n">${rng(a.m2)}</td><td class="n">${a.uf_m2 != null ? a.uf_m2.toFixed(3) : '–'}</td><td class="n">${vsTxt(a)}</td>
       <td>${a.metro ? `${esc(a.metro)} ${a.dist_metro} m` : '–'}</td><td class="n">${a.estacionamientos ?? '–'}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${quienPublica(a) || '–'}</td>
       <td>${hace(a.primera_vez)}</td><td><a href="${esc(a.url)}" target="_blank" rel="noopener">↗</a></td></tr>`).join('')}
     </tbody></table></div>`;
 }
@@ -352,7 +364,7 @@ function analisis(r){
       <div style="min-width:0">
         <div class="t">${esc(a.titulo)}</div>
         <div class="addr">${esc(a.comuna)} · ${a.metro ? `${a.dist_metro} m Metro ${esc(a.metro)} · ` : ''}${rng(a.dorm)}D ${rng(a.banos)}B · ${rng(a.m2)} m²${a.estacionamientos ? ` · ${a.estacionamientos} estac.` : ''}</div>
-        <div class="why2">${(a.razones || []).filter(x => !/Metro|amplio|mercado/.test(x)).map(esc).join(' · ')}</div>
+        <div class="why2">${[a.publica ? quienPublica(a) : '', ...(a.razones || []).filter(x => !/Metro|amplio|mercado/.test(x)).map(esc)].filter(Boolean).join(' · ')}</div>
         ${barras(a)}
       </div>
       <div class="r"><div class="big">${a.puntaje}<small style="font-size:12px;color:var(--muted)"> pts</small></div>
@@ -443,8 +455,8 @@ function syncControls(){
   document.querySelectorAll('[data-d]').forEach(c => c.setAttribute('aria-pressed', F.dorm.includes(+c.dataset.d)));
   document.querySelectorAll('[data-c]').forEach(c => c.setAttribute('aria-pressed', F.com.includes(c.dataset.c)));
   document.querySelectorAll('[data-v]').forEach(c => c.setAttribute('aria-pressed', F.vista === c.dataset.v));
-  [['#fEst','est'],['#fMasc','masc'],['#fNuevos','nuevos'],['#fFav','fav'],['#fZona','zona'],['#fDesc','desc']]
-    .forEach(([s,k]) => $(s).setAttribute('aria-pressed', F[k]));
+  [['#fEst','est'],['#fMasc','masc'],['#fDueno','dueno'],['#fNuevos','nuevos'],['#fFav','fav'],['#fZona','zona'],['#fDesc','desc']]
+    .forEach(([s,k]) => $(s).setAttribute('aria-pressed', !!F[k]));
   $('#fQ').value = F.q; $('#fOrd').value = F.ord;
 }
 function update(){ guardarFiltros(); syncControls(); render() }
@@ -464,6 +476,7 @@ function openDlg(id){
       <div class="break" style="margin-top:8px">Arriendo ${clp(a.precio_clp)}${a.moneda==='CLF'?` (UF ${a.precio})`:''} + GGCC ${clp(a.ggcc_clp)}${a.ggcc_estimado?' (estimado, no informado)':''}
         ${a.clp_m2 ? ` · ${clp(a.clp_m2)}/m²` : ''}${a.unidades ? ` · ${esc(a.unidades)}` : ''}</div>
       <div class="specs" style="margin-top:6px">${specs(a)}</div>
+      ${a.publica ? `<p class="sub" style="margin:8px 0 0">Publica: ${quienPublica(a)}${a.publica_nota ? ` — ${esc(a.publica_nota)}` : ''}</p>` : ''}
       ${a.puntaje != null ? `<div class="panel" style="margin-top:12px;padding:12px">
         <b>${a.puntaje} pts</b> · ${uf3(a.uf_m2)}/m² (${a.uf_mes} UF/mes de arriendo) · ${vsTxt(a)}
         ${a.mercado_uf_m2 ? `<div class="sub">Mercado: ${uf3(a.mercado_uf_m2)}/m² (mediana de ${esc(a.comps_criterio || a.comps + ' comparables')}) · Sector ${esc(a.sector)}${a.metro ? ` · ${a.dist_metro} m de Metro ${esc(a.metro)}` : ''}</div>` : ''}
@@ -495,7 +508,7 @@ document.addEventListener('click', e => {
   else if(t.dataset.c){ const c = t.dataset.c; F.com = F.com.includes(c) ? F.com.filter(x => x !== c) : [...F.com, c]; update() }
   else if(t.dataset.v){ F.vista = t.dataset.v; update() }
 });
-[['#fEst','est'],['#fMasc','masc'],['#fNuevos','nuevos'],['#fFav','fav'],['#fZona','zona'],['#fDesc','desc']]
+[['#fEst','est'],['#fMasc','masc'],['#fDueno','dueno'],['#fNuevos','nuevos'],['#fFav','fav'],['#fZona','zona'],['#fDesc','desc']]
   .forEach(([s,k]) => $(s).addEventListener('click', () => { F[k] = !F[k]; update() }));
 $('#fPres').addEventListener('input', e => { F.pres = +e.target.value; $('#fPresV').textContent = clp(F.pres); guardarFiltros(); render() });
 $('#fQ').addEventListener('input', e => { F.q = e.target.value; guardarFiltros(); render() });

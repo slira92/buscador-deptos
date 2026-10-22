@@ -281,8 +281,15 @@ def parsear_detalle(html):
         modelos.append({"dorm": rango(txt, "dormitorio")[0], "banos": rango(txt, "baño")[0], "m2": rango(txt, "m²")[0]})
     fotos = list(dict.fromkeys(re.findall(r'"(\d{5,7}-MLC\d+_\d+)"', json.dumps(comp.get("gallery_mosaic", {})))))
     desc = (comp.get("description") or {}).get("content", "") or ""
+    sp_vend = comp.get("seller_profile") or {}
+    tipo_ml = next((o["seller_type"] for o in recorrer(st) if isinstance(o.get("seller_type"), str)), None)
+    vendedor = {
+        "nombre": ((sp_vend.get("seller_name") or {}).get("title") or {}).get("text", ""),
+        "encabezado": (sp_vend.get("header") or {}).get("text", ""),
+        "tipo_ml": tipo_ml,
+    }
     return {
-        "lat": lat, "lon": lon, "specs": specs, "modelos": modelos,
+        "lat": lat, "lon": lon, "specs": specs, "modelos": modelos, "vendedor": vendedor,
         "publicado": (datetime.now() - timedelta(days=dias)).date().isoformat() if dias is not None else None,
         "descripcion": desc[:1500],
         "fotos": [URL_FOTO.format(id=f) for f in fotos[:8]],
@@ -290,6 +297,28 @@ def parsear_detalle(html):
 
 
 # ---------------------------------------------------------------- evaluacion
+
+# Palabras que delatan a una corredora/inmobiliaria en el nombre de quien publica
+CORREDOR_RE = re.compile(
+    r"propiedad|corredor|inmobiliari|gesti[oó]n|asesor|broker|realty|real estate|propert|asociad|&| spa\b|ltda|"
+    r"limitada|s\.a\.|group|grupo|arriendo|inversion|capital|homes?\b|house|remax|re/max|century|engel|sotheby|"
+    r"keller|toctoc|negocios|consultor|administra|servicios|partners|holding",
+    re.I)
+
+
+def clasificar_vendedor(v):
+    """'Dueño' o 'Corredor' segun tipo de cuenta de Mercado Libre y el nombre. Nota si son contradictorios."""
+    if not v or not (v.get("nombre") or v.get("tipo_ml") or v.get("encabezado")):
+        return None, None
+    nombre = v.get("nombre") or ""
+    cuenta_corredora = v.get("tipo_ml") == "real_estate_agency" or "corredora" in (v.get("encabezado") or "").lower()
+    nombre_corredor = bool(CORREDOR_RE.search(nombre))
+    if cuenta_corredora:
+        return "Corredor", None
+    if nombre_corredor:
+        return "Corredor", "publica como particular, pero el nombre es de corredora"
+    return "Dueño", None
+
 
 def evaluar(a, cfg, uf, dolar):
     """Calcula montos en CLP y la lista de motivos por los que NO cumple (vacia = cumple)."""
@@ -312,6 +341,7 @@ def evaluar(a, cfg, uf, dolar):
     a["piso"] = sp.get("Número de piso de la unidad")
     a["antiguedad"] = sp.get("Antigüedad")
     a["orientacion"] = sp.get("Orientación")
+    a["publica"], a["publica_nota"] = clasificar_vendedor(a.get("vendedor"))
 
     a["precio_clp"] = a_clp(a["precio"], a["moneda"], uf, dolar)
     a["precio_estimado"] = False
