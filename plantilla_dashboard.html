@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Buscador Deptos Arriendo</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+:root{
+  --bg:#f6f5f2; --panel:#ffffff; --ink:#1b1d21; --muted:#6b6f76; --line:#e4e2dd;
+  --accent:#0b6e4f; --accent-soft:#e3f1ec; --warn:#b4540a; --warn-soft:#fbeee2;
+  --bad:#a8323e; --bad-soft:#f8e6e8; --chip:#efeee9; --star:#c99a06;
+  --shadow:0 1px 2px rgba(0,0,0,.05),0 4px 14px rgba(0,0,0,.05);
+  --s1:#2a78d6; --s2:#eb6834; --grid:#e9e7e2;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#131416; --panel:#1c1d20; --ink:#ecebe8; --muted:#9a9ea5; --line:#2c2e33;
+    --accent:#4cc08f; --accent-soft:#183128; --warn:#f0a35c; --warn-soft:#352616;
+    --bad:#ef7d88; --bad-soft:#3a1d21; --chip:#26282c; --star:#f2c94c;
+    --shadow:0 1px 2px rgba(0,0,0,.3);
+    --s1:#3987e5; --s2:#d95926; --grid:#2a2c30;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#131416; --panel:#1c1d20; --ink:#ecebe8; --muted:#9a9ea5; --line:#2c2e33;
+  --accent:#4cc08f; --accent-soft:#183128; --warn:#f0a35c; --warn-soft:#352616;
+  --bad:#ef7d88; --bad-soft:#3a1d21; --chip:#26282c; --star:#f2c94c;
+  --shadow:0 1px 2px rgba(0,0,0,.3);
+  --s1:#3987e5; --s2:#d95926; --grid:#2a2c30;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+button,input,select{font:inherit;color:inherit}
+a{color:var(--accent)}
+header{padding:18px 20px 10px;display:flex;flex-wrap:wrap;gap:12px 28px;align-items:flex-end;justify-content:space-between}
+h1{font-size:20px;margin:0;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:13px}
+.kpis{display:flex;gap:22px;flex-wrap:wrap}
+.kpi b{display:block;font-size:22px;font-variant-numeric:tabular-nums;line-height:1.1}
+.kpi span{color:var(--muted);font-size:12px}
+.filters{position:sticky;top:0;z-index:500;background:var(--bg);border-bottom:1px solid var(--line);padding:10px 20px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+.f{display:flex;align-items:center;gap:6px}
+.f label{color:var(--muted);font-size:12px}
+.chip{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:4px 11px;cursor:pointer;font-size:13px;user-select:none}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+input[type=range]{width:140px;accent-color:var(--accent)}
+input[type=search],select{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:5px 9px}
+input[type=search]{width:170px}
+.money{font-variant-numeric:tabular-nums;font-weight:600;min-width:84px;display:inline-block}
+main{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;padding:16px 20px 40px}
+@media (min-width:1150px){ main{grid-template-columns:minmax(0,1fr) 440px} #mapWrap{position:sticky;top:64px;height:calc(100vh - 84px)} }
+#mapWrap{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;min-height:360px}
+#map{width:100%;height:100%;min-height:360px}
+.listhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px;flex-wrap:wrap}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column;transition:outline-color .2s;outline:2px solid transparent}
+.card.hl{outline-color:var(--accent)}
+.card.off{opacity:.5}
+.ph{position:relative;aspect-ratio:16/10;background:var(--chip);cursor:pointer;overflow:hidden}
+.ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.badges{position:absolute;left:8px;top:8px;display:flex;gap:5px;flex-wrap:wrap}
+.b{font-size:11px;font-weight:600;padding:2px 7px;border-radius:5px;background:var(--panel);color:var(--ink)}
+.b.new{background:var(--accent);color:#fff}
+.b.drop{background:var(--warn);color:#fff}
+.b.gone{background:var(--bad);color:#fff}
+.acts{position:absolute;right:8px;top:8px;display:flex;gap:5px}
+.ib{width:30px;height:30px;border-radius:50%;border:0;background:rgba(255,255,255,.92);color:#222;cursor:pointer;font-size:15px;line-height:30px;padding:0}
+.ib.on.fav{color:var(--star);background:#fff}
+.body{padding:11px 13px 13px;display:flex;flex-direction:column;gap:5px;flex:1}
+.total{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+.total small{font-size:12px;font-weight:400;color:var(--muted)}
+.break{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.est{color:var(--warn)}
+.ttl{font-weight:600;line-height:1.3;cursor:pointer}
+.addr{color:var(--muted);font-size:12.5px}
+.specs{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
+.s{background:var(--chip);border-radius:5px;padding:2px 7px;font-size:12px}
+.s.why{background:var(--bad-soft);color:var(--bad)}
+.foot{display:flex;justify-content:space-between;align-items:center;margin-top:auto;padding-top:6px;font-size:12px;color:var(--muted)}
+.empty{padding:40px;text-align:center;color:var(--muted);background:var(--panel);border:1px dashed var(--line);border-radius:12px}
+table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:13px}
+th,td{padding:7px 9px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+th{font-size:12px;color:var(--muted);font-weight:600;cursor:pointer}
+td.n{text-align:right;font-variant-numeric:tabular-nums}
+.tablewrap{overflow-x:auto}
+dialog{border:0;border-radius:14px;padding:0;max-width:820px;width:calc(100% - 32px);background:var(--panel);color:var(--ink)}
+dialog::backdrop{background:rgba(0,0,0,.5)}
+.dlg-h{display:flex;justify-content:space-between;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line)}
+.dlg-b{padding:14px 16px;max-height:75vh;overflow:auto}
+.gal{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px}
+.gal img{height:190px;border-radius:8px}
+.kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:4px 16px;margin:12px 0}
+.kv div{display:flex;justify-content:space-between;border-bottom:1px dotted var(--line);padding:3px 0;font-size:13px}
+.kv span{color:var(--muted)}
+textarea{width:100%;min-height:60px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;color:var(--ink);font:inherit}
+.desc{white-space:pre-wrap;font-size:13px;color:var(--muted)}
+.status{font-size:12px;color:var(--muted)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);margin-right:5px;vertical-align:1px}
+.dot.warn{background:var(--warn)}
+.score{position:absolute;left:8px;bottom:8px;background:rgba(0,0,0,.72);color:#fff;font-weight:700;font-size:12px;padding:3px 8px;border-radius:6px;font-variant-numeric:tabular-nums}
+.ufm2{font-size:12.5px;font-variant-numeric:tabular-nums}
+.good{color:var(--accent);font-weight:600}
+.over{color:var(--bad);font-weight:600}
+.why2{font-size:12px;color:var(--muted)}
+/* análisis */
+.an{display:flex;flex-direction:column;gap:18px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+.panel h2{font-size:15px;margin:0 0 4px}
+.panel .note{font-size:12.5px;color:var(--muted);margin:0 0 12px}
+.rank{display:grid;grid-template-columns:28px 72px minmax(0,1fr) auto;gap:10px 12px;align-items:center;padding:10px 0;border-top:1px solid var(--line);cursor:pointer}
+.rank:first-of-type{border-top:0}
+.rank .n{font-weight:700;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.rank img{width:72px;height:54px;object-fit:cover;border-radius:6px;display:block;background:var(--chip)}
+.rank .t{font-weight:600;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rank .r{text-align:right;font-variant-numeric:tabular-nums}
+.rank .big{font-size:20px;font-weight:700}
+.bars{display:flex;gap:6px;margin-top:5px;flex-wrap:wrap}
+.bar{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted)}
+.bar i{display:block;width:34px;height:5px;border-radius:3px;background:var(--chip);overflow:hidden}
+.bar i b{display:block;height:100%;background:var(--ink);border-radius:3px}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-bottom:6px;flex-wrap:wrap}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend em{width:10px;height:10px;border-radius:50%;display:inline-block}
+#scatter{width:100%;height:auto;display:block;overflow:visible}
+#scatter text{font-size:11px;fill:var(--muted)}
+#tip{position:fixed;pointer-events:none;z-index:2000;background:var(--panel);color:var(--ink);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:8px;padding:8px 10px;font-size:12px;max-width:260px;display:none}
+@media (max-width:640px){ .rank{grid-template-columns:22px 56px minmax(0,1fr)} .rank .r{grid-column:3;text-align:left} .rank img{width:56px;height:44px} }
+@media (max-width:640px){ header,.filters,main{padding-left:16px;padding-right:16px} input[type=search]{width:100%} .f.grow{flex:1 1 100%} }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Deptos en arriendo · Las Condes y Providencia oriente</h1>
+    <div class="sub" id="sub">Cargando…</div>
+  </div>
+  <div class="kpis" id="kpis"></div>
+</header>
+
+<div class="filters" id="filters">
+  <div class="f"><label>Total máx.</label><input type="range" id="fPres" min="800000" max="2000000" step="25000"><span class="money" id="fPresV"></span></div>
+  <div class="f"><label>Dorm.</label><span class="chip" data-d="2">2</span><span class="chip" data-d="3">3</span></div>
+  <div class="f"><label>Comuna</label><span class="chip" data-c="Las Condes">Las Condes</span><span class="chip" data-c="Providencia">Providencia</span></div>
+  <div class="f">
+    <span class="chip" id="fEst">Con estac.</span>
+    <span class="chip" id="fMasc">Mascotas</span>
+    <span class="chip" id="fNuevos">Nuevos 48 h</span>
+    <span class="chip" id="fFav">★ Favoritos</span>
+    <span class="chip" id="fZona" title="Incluir avisos de Providencia al poniente del límite">Fuera de zona</span>
+    <span class="chip" id="fDesc">Descartados</span>
+  </div>
+  <div class="f grow"><input type="search" id="fQ" placeholder="Buscar calle, edificio…"></div>
+  <div class="f"><label>Orden</label>
+    <select id="fOrd">
+      <option value="puntaje">Mejor puntaje</option>
+      <option value="total">Total ↑</option>
+      <option value="ufm2">UF/m² ↑</option>
+      <option value="vs">Más bajo mercado</option>
+      <option value="nuevo">Más recientes</option>
+      <option value="m2">m² ↓</option>
+      <option value="clpm2">$/m² ↑</option>
+    </select>
+  </div>
+  <div class="f"><span class="chip" data-v="analisis">Análisis</span><span class="chip" data-v="cards">Tarjetas</span><span class="chip" data-v="tabla">Tabla</span></div>
+</div>
+
+<main>
+  <section>
+    <div class="listhead"><div id="count" class="sub"></div><div class="status" id="status"></div></div>
+    <div id="list"></div>
+  </section>
+  <aside id="mapWrap"><div id="map"></div></aside>
+</main>
+
+<dialog id="dlg"></dialog>
+<div id="tip" role="tooltip"></div>
+
+<script>window.BUSCADOR = /*__DATOS__*/null;</script>
+<script>
+const LS = {
+  get(k, d){ try{ const v = localStorage.getItem('buscador.'+k); return v ? JSON.parse(v) : d }catch(e){ return d } },
+  set(k, v){ try{ localStorage.setItem('buscador.'+k, JSON.stringify(v)) }catch(e){} }
+};
+let DATA = null;
+const fav = new Set(LS.get('fav', [])), desc = new Set(LS.get('desc', []));
+const notas = LS.get('notas', {});
+const F = Object.assign({pres:null, dorm:[2,3], com:['Las Condes','Providencia'], est:false, masc:false, mf:true,
+  nuevos:false, fav:false, zona:false, desc:false, q:'', ord:'puntaje', vista:'analisis'}, LS.get('filtros', {}));
+
+const $ = s => document.querySelector(s);
+const clp = n => n == null ? '–' : '$' + Math.round(n).toLocaleString('es-CL');
+const rng = p => !p || p[0] == null ? '?' : (p[0] === p[1] ? +p[0] : `${+p[0]}–${+p[1]}`);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const hace = iso => { if(!iso) return ''; const h = (Date.now() - new Date(iso)) / 36e5;
+  return h < 1 ? 'hace minutos' : h < 24 ? `hace ${Math.round(h)} h` : `hace ${Math.round(h/24)} d` };
+const pct = v => (v > 0 ? '+' : '') + Math.round(v * 100) + '%';
+const uf3 = v => v == null ? '–' : 'UF ' + v.toLocaleString('es-CL', {minimumFractionDigits:3, maximumFractionDigits:3});
+const med = xs => { const s = xs.filter(x => x != null).sort((a,b) => a - b), n = s.length;
+  return !n ? null : n % 2 ? s[(n-1)/2] : (s[n/2-1] + s[n/2]) / 2 };
+const PESOS = [['precio_vs_mercado','Precio vs mercado'],['costo_total','Costo total'],['superficie','Superficie'],['ubicacion','Metro'],['extras','Extras']];
+function vsTxt(a){
+  if(a.dudoso) return '<span class="over">⚠ dato inusual</span>';
+  if(a.vs_mercado == null) return '';
+  const c = a.vs_mercado <= -0.05 ? 'good' : a.vs_mercado >= 0.05 ? 'over' : '';
+  return `<span class="${c}">${pct(a.vs_mercado)} vs mercado</span>`;
+}
+function lineaUf(a){
+  if(a.uf_m2 == null) return '';
+  return `<div class="ufm2">${uf3(a.uf_m2)}/m² · ${vsTxt(a)}</div>`;
+}
+function barras(a){
+  if(!a.puntaje_det) return '';
+  return `<div class="bars">${PESOS.map(([k,l]) => `<span class="bar" title="${l}: ${a.puntaje_det[k]}/100">${l}<i><b style="width:${a.puntaje_det[k]}%"></b></i></span>`).join('')}</div>`;
+}
+const esNuevo = a => !a.carga_inicial && (Date.now() - new Date(a.primera_vez)) < 48*36e5;
+const bajo = a => a.bajo_precio && (Date.now() - new Date(a.bajo_precio)) < 72*36e5;
+
+function guardarFiltros(){ LS.set('filtros', F) }
+
+function visibles(){
+  const q = F.q.trim().toLowerCase();
+  let r = DATA.avisos.filter(a => {
+    if(!a.activo || a.duplicado_de) return false;
+    const otros = (a.motivos||[]).filter(m => m !== 'presupuesto' && m !== 'zona');
+    if(otros.length) return false;
+    if(a.total_clp > F.pres) return false;
+    if(!F.zona && (a.motivos||[]).includes('zona')) return false;
+    if(!F.com.includes(a.comuna)) return false;
+    const d = a.dorm || [null,null];
+    if(d[0] != null && !F.dorm.some(x => x >= d[0] && x <= d[1])) return false;
+    if(F.est && !(a.estacionamientos > 0)) return false;
+    if(F.masc && a.mascotas !== 'Sí') return false;
+    if(F.nuevos && !(esNuevo(a) || bajo(a))) return false;
+    if(F.fav && !fav.has(a.id)) return false;
+    if(!F.desc && desc.has(a.id)) return false;
+    if(q && !(a.titulo + ' ' + a.direccion).toLowerCase().includes(q)) return false;
+    return true;
+  });
+  const key = {
+    total: (a,b) => a.total_clp - b.total_clp,
+    nuevo: (a,b) => (b.primera_vez||'').localeCompare(a.primera_vez||''),
+    m2: (a,b) => ((b.m2||[])[0]||0) - ((a.m2||[])[0]||0),
+    clpm2: (a,b) => (a.clp_m2||1e12) - (b.clp_m2||1e12),
+    puntaje: (a,b) => (b.puntaje ?? -1) - (a.puntaje ?? -1),
+    ufm2: (a,b) => (a.dudoso?9:a.uf_m2 ?? 9) - (b.dudoso?9:b.uf_m2 ?? 9),
+    vs: (a,b) => (a.dudoso?9:a.vs_mercado ?? 9) - (b.dudoso?9:b.vs_mercado ?? 9),
+  }[F.ord] || ((a,b) => a.total_clp - b.total_clp);
+  return r.sort(key);
+}
+
+function badges(a){
+  let h = '';
+  if(esNuevo(a)) h += '<span class="b new">NUEVO</span>';
+  if(bajo(a)) h += '<span class="b drop">BAJÓ PRECIO</span>';
+  if(a.multifamily) h += '<span class="b">MULTIFAMILY</span>';
+  if(a.amoblado === 'Sí') h += '<span class="b">AMOBLADO</span>';
+  return h;
+}
+function specs(a){
+  const s = [`${rng(a.dorm)} D`, `${rng(a.banos)} B`];
+  if(a.m2 && a.m2[0]) s.push(`${rng(a.m2)} m²`);
+  if(a.estacionamientos) s.push(`${a.estacionamientos} estac.`);
+  if(a.bodegas) s.push(`${a.bodegas} bod.`);
+  if(a.mascotas === 'Sí') s.push('mascotas');
+  if(a.piso) s.push(`piso ${esc(a.piso)}`);
+  if(a.orientacion) s.push(esc(a.orientacion));
+  if(a.duplicados) s.push(`+${a.duplicados} publicación${a.duplicados>1?'es':''} igual${a.duplicados>1?'es':''}`);
+  let h = s.map(x => `<span class="s">${x}</span>`).join('');
+  if(a.total_clp > DATA.meta.presupuesto) h += `<span class="s why">+${clp(a.total_clp - DATA.meta.presupuesto)} sobre presupuesto</span>`;
+  if((a.motivos||[]).includes('zona')) h += '<span class="s why">fuera de zona</span>';
+  return h;
+}
+
+function card(a){
+  const f = fav.has(a.id), d = desc.has(a.id);
+  return `<article class="card${d?' off':''}" id="c-${a.id}" data-id="${a.id}">
+    <div class="ph" data-open="${a.id}">${a.foto ? `<img loading="lazy" src="${esc(a.foto)}" alt="">` : ''}
+      <div class="badges">${badges(a)}</div>
+      ${a.puntaje != null ? `<div class="score" title="Puntaje 0–100 según precio vs mercado, costo, m², Metro y extras">${a.puntaje} pts</div>` : ''}
+      <div class="acts">
+        <button class="ib fav${f?' on':''}" data-fav="${a.id}" title="Favorito">${f?'★':'☆'}</button>
+        <button class="ib" data-desc="${a.id}" title="${d?'Restaurar':'Descartar'}">${d?'↺':'✕'}</button>
+      </div></div>
+    <div class="body">
+      <div class="total">${clp(a.total_clp)} <small>total/mes</small></div>
+      <div class="break">${a.precio_estimado?'<span class="est" title="Edificio multifamily: precio publicado es desde (unidad más chica); estimado por m² para el modelo 2D">≈ </span>':a.multifamily?'desde ':''}${clp(a.precio_clp)}${a.moneda==='CLF'?` (UF ${a.precio})`:''} + GGCC <span class="${a.ggcc_estimado?'est':''}" title="${a.ggcc_estimado?'No informado: estimado por m²':''}">${clp(a.ggcc_clp)}${a.ggcc_estimado?' est.':''}</span></div>
+      ${lineaUf(a)}
+      <div class="ttl" data-open="${a.id}">${esc(a.titulo)}</div>
+      <div class="addr">${esc(a.direccion)}${a.metro && a.dist_metro <= 1500 ? ` · ${a.dist_metro} m Metro ${esc(a.metro)}` : ''}</div>
+      <div class="specs">${specs(a)}</div>
+      ${notas[a.id] ? `<div class="sub">📝 ${esc(notas[a.id])}</div>` : ''}
+      <div class="foot"><span>Visto ${hace(a.primera_vez)}${a.publicado?` · publicado ${new Date(a.publicado).toLocaleDateString('es-CL')}`:''}</span>
+        <a href="${esc(a.url)}" target="_blank" rel="noopener">Ver aviso ↗</a></div>
+    </div></article>`;
+}
+
+function tabla(r){
+  return `<div class="tablewrap"><table><thead><tr>
+    <th></th><th>Título</th><th>Comuna</th><th>Pts</th><th>Total</th><th>Arriendo</th><th>GGCC</th><th>D</th><th>B</th><th>m²</th><th>UF/m²</th><th>vs merc.</th><th>Metro</th><th>Estac.</th><th>Visto</th><th></th></tr></thead><tbody>
+    ${r.map(a => `<tr data-id="${a.id}"><td>${fav.has(a.id)?'★':''}${esNuevo(a)?' 🆕':''}</td>
+      <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis"><a href="#" data-open="${a.id}">${esc(a.titulo)}</a></td>
+      <td>${esc(a.comuna)}</td><td class="n"><b>${a.puntaje ?? '–'}</b></td><td class="n"><b>${clp(a.total_clp)}</b></td><td class="n">${clp(a.precio_clp)}</td>
+      <td class="n${a.ggcc_estimado?' est':''}">${clp(a.ggcc_clp)}</td><td class="n">${rng(a.dorm)}</td><td class="n">${rng(a.banos)}</td>
+      <td class="n">${rng(a.m2)}</td><td class="n">${a.uf_m2 != null ? a.uf_m2.toFixed(3) : '–'}</td><td class="n">${vsTxt(a)}</td>
+      <td>${a.metro ? `${esc(a.metro)} ${a.dist_metro} m` : '–'}</td><td class="n">${a.estacionamientos ?? '–'}</td>
+      <td>${hace(a.primera_vez)}</td><td><a href="${esc(a.url)}" target="_blank" rel="noopener">↗</a></td></tr>`).join('')}
+    </tbody></table></div>`;
+}
+
+// ---- análisis
+function ticks(lo, hi, n){
+  const raw = (hi - lo) / n, p = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 2, 2.5, 5, 10].map(m => m * p).find(s => s >= raw);
+  const out = []; for(let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(+v.toFixed(6));
+  return out;
+}
+function scatter(pts, top){
+  if(pts.length < 3) return '<p class="note">Faltan datos para el gráfico.</p>';
+  const W = 760, H = 330, L = 52, R = 14, T = 12, B = 38;
+  const xs = pts.map(a => a.m2[0]), ys = pts.map(a => a.uf_m2);
+  const x0 = Math.floor(Math.min(...xs) / 10) * 10, x1 = Math.ceil(Math.max(...xs) / 10) * 10;
+  const y0 = Math.floor(Math.min(...ys) * 50) / 50, y1 = Math.ceil(Math.max(...ys) * 50) / 50;
+  const X = v => L + (v - x0) / (x1 - x0) * (W - L - R), Y = v => H - B - (v - y0) / (y1 - y0) * (H - T - B);
+  const m = med(ys);
+  let g = '';
+  ticks(y0, y1, 5).forEach(v => { g += `<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--grid)"/><text x="${L-6}" y="${Y(v)+4}" text-anchor="end">${v.toFixed(2)}</text>` });
+  ticks(x0, x1, 7).forEach(v => { g += `<text x="${X(v)}" y="${H-B+16}" text-anchor="middle">${v}</text>` });
+  g += `<text x="${(L+W-R)/2}" y="${H-4}" text-anchor="middle">m² útiles</text>`;
+  g += `<text transform="translate(12 ${(T+H-B)/2}) rotate(-90)" text-anchor="middle">UF/m² arriendo</text>`;
+  g += `<line x1="${L}" x2="${W-R}" y1="${Y(m)}" y2="${Y(m)}" stroke="var(--muted)" stroke-dasharray="4 4"/>
+        <text x="${W-R}" y="${Y(m)-5}" text-anchor="end">mediana ${m.toFixed(3)}</text>`;
+  const ids = new Set(top.map(a => a.id));
+  // primero los normales, después el top 10 encima
+  [...pts].sort((a,b) => ids.has(a.id) - ids.has(b.id)).forEach(a => {
+    const cx = X(a.m2[0]), cy = Y(a.uf_m2), c = a.comuna === 'Providencia' ? 'var(--s2)' : 'var(--s1)';
+    if(ids.has(a.id)) g += `<circle cx="${cx}" cy="${cy}" r="9" fill="none" stroke="var(--ink)" stroke-width="1.5"/>`;
+    g += `<circle cx="${cx}" cy="${cy}" r="5" fill="${c}" stroke="var(--panel)" stroke-width="2"/>
+          <circle cx="${cx}" cy="${cy}" r="11" fill="transparent" data-tip="${a.id}" data-open="${a.id}" style="cursor:pointer"/>`;
+  });
+  return `<svg id="scatter" viewBox="0 0 ${W} ${H}" role="img" aria-label="UF por m² versus superficie">${g}</svg>`;
+}
+function analisis(r){
+  const base = r.filter(a => a.puntaje != null);
+  const top = [...base].sort((a,b) => b.puntaje - a.puntaje).slice(0, 10);
+  const pts = base.filter(a => !a.dudoso && a.uf_m2 != null && a.m2 && a.m2[0]);
+  const ranking = top.map((a, i) => `
+    <div class="rank" data-open="${a.id}">
+      <div class="n">${i+1}</div>
+      ${a.foto ? `<img loading="lazy" src="${esc(a.foto)}" alt="">` : '<img alt="">'}
+      <div style="min-width:0">
+        <div class="t">${esc(a.titulo)}</div>
+        <div class="addr">${esc(a.comuna)} · ${a.metro ? `${a.dist_metro} m Metro ${esc(a.metro)} · ` : ''}${rng(a.dorm)}D ${rng(a.banos)}B · ${rng(a.m2)} m²${a.estacionamientos ? ` · ${a.estacionamientos} estac.` : ''}</div>
+        <div class="why2">${(a.razones || []).filter(x => !/Metro|amplio|mercado/.test(x)).map(esc).join(' · ')}</div>
+        ${barras(a)}
+      </div>
+      <div class="r"><div class="big">${a.puntaje}<small style="font-size:12px;color:var(--muted)"> pts</small></div>
+        <div><b>${clp(a.total_clp)}</b> total</div><div class="ufm2">${uf3(a.uf_m2)}/m²</div><div class="ufm2">${vsTxt(a)}</div></div>
+    </div>`).join('');
+  const sect = {};
+  pts.forEach(a => (sect[a.sector] = sect[a.sector] || []).push(a));
+  const filas = Object.entries(sect).map(([s, xs]) => ({s, n: xs.length, uf: med(xs.map(a => a.uf_m2)),
+      tot: med(xs.map(a => a.total_clp)), m2: med(xs.map(a => a.m2[0])), best: xs.reduce((b, a) => a.puntaje > b.puntaje ? a : b)}))
+    .sort((a,b) => a.uf - b.uf);
+  const tabla = `<div class="tablewrap"><table><thead><tr><th>Sector (Metro más cercano)</th><th>Deptos</th><th>Mediana UF/m²</th><th>Mediana total</th><th>Mediana m²</th><th>Mejor opción</th></tr></thead><tbody>
+    ${filas.map(f => `<tr><td>${esc(f.s)}</td><td class="n">${f.n}</td><td class="n">${f.uf.toFixed(3)}</td><td class="n">${clp(f.tot)}</td><td class="n">${Math.round(f.m2)}</td>
+      <td><a href="#" data-open="${f.best.id}">${f.best.puntaje} pts · ${clp(f.best.total_clp)}</a></td></tr>`).join('')}</tbody></table></div>`;
+  return `<div class="an">
+    <div class="panel"><h2>Top 10 según mis criterios</h2>
+      <p class="note">Puntaje 0–100 = precio vs mercado 30% · costo total vs presupuesto 15% · superficie 20% · cercanía al Metro 20% · extras 15% (estacionamiento, bodega, ≤15 años).
+      “Mercado” es la mediana de UF/m² de deptos comparables a ≤1 km con los mismos dormitorios, entre todos los avisos activos que encontró el buscador. Respeta los filtros de arriba.</p>
+      ${ranking || '<p class="note">Sin datos con estos filtros.</p>'}</div>
+    <div class="panel"><h2>UF/m² vs superficie</h2>
+      <p class="note">Abajo de la línea = más barato por m² que la mediana. Los deptos grandes suelen salir más baratos por m². Con anillo: el top 10. Clic en un punto abre la ficha.</p>
+      <div class="legend"><span><em style="background:var(--s1)"></em>Las Condes</span><span><em style="background:var(--s2)"></em>Providencia</span><span><em style="border:1.5px solid var(--ink)"></em>Top 10</span></div>
+      ${scatter(pts, top)}</div>
+    <div class="panel"><h2>Precio por sector</h2>
+      <p class="note">Ordenado de menor a mayor UF/m². Los avisos en pesos se pasan a UF con la UF del día (${clp(DATA.meta.uf)}).</p>${tabla}</div>
+  </div>`;
+}
+document.addEventListener('mousemove', e => {
+  const t = e.target.closest && e.target.closest('[data-tip]'), tip = $('#tip');
+  if(!t){ tip.style.display = 'none'; return }
+  const a = DATA.avisos.find(x => x.id === t.dataset.tip); if(!a) return;
+  tip.innerHTML = `<b>${clp(a.total_clp)}</b> total · ${a.puntaje} pts<br>${esc(a.titulo)}<br>${rng(a.m2)} m² · ${uf3(a.uf_m2)}/m² · ${vsTxt(a)}<br>${esc(a.sector || '')}`;
+  tip.style.display = 'block';
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  tip.style.left = Math.min(e.clientX + 14, innerWidth - w - 8) + 'px';
+  tip.style.top = (e.clientY + 14 + h > innerHeight ? e.clientY - h - 10 : e.clientY + 14) + 'px';
+});
+
+// ---- mapa
+let map, layer, markers = {};
+function initMap(){
+  if(typeof L === 'undefined'){ $('#mapWrap').innerHTML = '<div class="empty">Mapa no disponible sin internet</div>'; return }
+  map = L.map('map', {zoomControl:true}).setView([-33.418, -70.575], 13);
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+    attribution:'Tiles © Esri', maxZoom:19}).addTo(map);
+  const lim = (DATA.meta.limites || {}).Providencia;
+  if(lim && lim.lon_min) L.polyline([[-33.405, lim.lon_min], [-33.455, lim.lon_min]],
+    {color:'#a8323e', weight:2, dashArray:'6 6'}).addTo(map).bindTooltip('Límite poniente Providencia');
+  layer = L.layerGroup().addTo(map);
+}
+function drawMap(r){
+  if(!map) return;
+  layer.clearLayers(); markers = {};
+  const pts = [];
+  r.forEach(a => {
+    if(a.lat == null) return;
+    const color = fav.has(a.id) ? '#c99a06' : esNuevo(a) ? '#0b6e4f' : a.total_clp > DATA.meta.presupuesto ? '#b4540a' : '#3b5bdb';
+    const m = L.circleMarker([a.lat, a.lon], {radius:7, color:'#fff', weight:1.5, fillColor:color, fillOpacity:.95})
+      .bindPopup(`<b>${clp(a.total_clp)}</b> total<br>${esc(a.titulo)}<br>${rng(a.dorm)}D · ${rng(a.banos)}B · ${rng(a.m2)} m²<br><a href="#" data-open="${a.id}">Ver ficha</a> · <a href="${esc(a.url)}" target="_blank">Aviso ↗</a>`);
+    m.on('click', () => { const c = document.getElementById('c-'+a.id); if(c){ c.scrollIntoView({behavior:'smooth', block:'center'}); flash(c) } });
+    m.addTo(layer); markers[a.id] = m; pts.push([a.lat, a.lon]);
+  });
+}
+function flash(el){ document.querySelectorAll('.card.hl').forEach(x => x.classList.remove('hl')); el.classList.add('hl') }
+
+// ---- render
+function render(){
+  const r = visibles();
+  const m = DATA.meta;
+  const activos = DATA.avisos.filter(a => a.activo);
+  const cumplen = activos.filter(a => a.cumple && !a.duplicado_de);
+  const nuevos = cumplen.filter(esNuevo);
+  const ult = (m.corridas || []).slice(-1)[0];
+  $('#sub').innerHTML = `2–3 dorm · 2+ baños · total ≤ ${clp(m.presupuesto)} · UF ${clp(m.uf)} · ` +
+    `<span class="dot${ult && ult.bloqueo ? ' warn':''}"></span>actualizado ${hace(m.generado)}`;
+  $('#kpis').innerHTML = [
+    [cumplen.length, 'cumplen'], [nuevos.length, 'nuevos 48 h'],
+    [cumplen.some(a => !a.dudoso) ? clp(Math.min(...cumplen.filter(a => !a.dudoso).map(a => a.total_clp))) : '–', 'más barato'],
+    [fav.size, 'favoritos']].map(([v,l]) => `<div class="kpi"><b>${v}</b><span>${l}</span></div>`).join('');
+  $('#count').textContent = `${r.length} departamentos`;
+  $('#status').textContent = ult ? `Última búsqueda: ${new Date(ult.fecha).toLocaleString('es-CL')} · ${ult.tarjetas} avisos revisados${ult.bloqueo ? ' · ⚠ el portal bloqueó parte de la búsqueda' : ''}` : '';
+  $('#list').innerHTML = !r.length ? '<div class="empty">Nada con estos filtros. Prueba subir el total máximo o activar “Fuera de zona”.</div>'
+    : F.vista === 'tabla' ? tabla(r) : F.vista === 'analisis' ? analisis(r) : `<div class="grid">${r.map(card).join('')}</div>`;
+  drawMap(r);
+}
+
+function syncControls(){
+  $('#fPres').value = F.pres; $('#fPresV').textContent = clp(F.pres);
+  document.querySelectorAll('[data-d]').forEach(c => c.setAttribute('aria-pressed', F.dorm.includes(+c.dataset.d)));
+  document.querySelectorAll('[data-c]').forEach(c => c.setAttribute('aria-pressed', F.com.includes(c.dataset.c)));
+  document.querySelectorAll('[data-v]').forEach(c => c.setAttribute('aria-pressed', F.vista === c.dataset.v));
+  [['#fEst','est'],['#fMasc','masc'],['#fNuevos','nuevos'],['#fFav','fav'],['#fZona','zona'],['#fDesc','desc']]
+    .forEach(([s,k]) => $(s).setAttribute('aria-pressed', F[k]));
+  $('#fQ').value = F.q; $('#fOrd').value = F.ord;
+}
+function update(){ guardarFiltros(); syncControls(); render() }
+
+function openDlg(id){
+  const a = DATA.avisos.find(x => x.id === id); if(!a) return;
+  const fotos = (a.fotos && a.fotos.length ? a.fotos : [a.foto]).filter(Boolean);
+  const sp = Object.entries(a.specs || {}).filter(([k]) => !['Dormitorios','Baños'].includes(k));
+  const dups = DATA.avisos.filter(x => x.duplicado_de === a.id);
+  const hist = (a.historial_precio || []).map(([f,p,m]) => `${f}: ${m==='CLF'?'UF '+p:clp(p)}`).join(' → ');
+  const dlg = $('#dlg');
+  dlg.innerHTML = `<div class="dlg-h"><div><div class="total">${clp(a.total_clp)} <small>total/mes</small></div>
+      <div class="ttl">${esc(a.titulo)}</div><div class="addr">${esc(a.direccion)}</div></div>
+      <div><button class="chip" data-close>Cerrar</button></div></div>
+    <div class="dlg-b">
+      <div class="gal">${fotos.map(f => `<img loading="lazy" src="${esc(f)}" alt="">`).join('')}</div>
+      <div class="break" style="margin-top:8px">Arriendo ${clp(a.precio_clp)}${a.moneda==='CLF'?` (UF ${a.precio})`:''} + GGCC ${clp(a.ggcc_clp)}${a.ggcc_estimado?' (estimado, no informado)':''}
+        ${a.clp_m2 ? ` · ${clp(a.clp_m2)}/m²` : ''}${a.unidades ? ` · ${esc(a.unidades)}` : ''}</div>
+      <div class="specs" style="margin-top:6px">${specs(a)}</div>
+      ${a.puntaje != null ? `<div class="panel" style="margin-top:12px;padding:12px">
+        <b>${a.puntaje} pts</b> · ${uf3(a.uf_m2)}/m² (${a.uf_mes} UF/mes de arriendo) · ${vsTxt(a)}
+        ${a.mercado_uf_m2 ? `<div class="sub">Mercado: ${uf3(a.mercado_uf_m2)}/m² (mediana de ${esc(a.comps_criterio || a.comps + ' comparables')}) · Sector ${esc(a.sector)}${a.metro ? ` · ${a.dist_metro} m de Metro ${esc(a.metro)}` : ''}</div>` : ''}
+        ${barras(a)}
+        ${(a.razones || []).length ? `<div class="why2" style="margin-top:6px">${a.razones.map(esc).join(' · ')}</div>` : ''}
+      </div>` : ''}
+      <div class="kv">${sp.map(([k,v]) => `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('')}</div>
+      ${hist ? `<p class="sub">Historial de precio: ${hist}</p>` : ''}
+      ${a.multifamily && a.modelos && a.modelos.length ? `<p class="sub">Modelos disponibles: ${a.modelos.map(m => `${m.dorm ?? '?'}D/${m.banos ?? '?'}B ${m.m2 ?? '?'} m²`).join(' · ')}${a.precio_estimado ? ` — precio publicado “desde” ${a.moneda==='CLF'?'UF '+a.precio:clp(a.precio)}; el del modelo ${a.modelo.dorm}D es estimado por m²` : ''}</p>` : ''}
+      ${dups.length ? `<p class="sub">Mismo depto publicado también en: ${dups.map(d => `<a href="${esc(d.url)}" target="_blank" rel="noopener">${clp(d.total_clp)}</a>`).join(' · ')}</p>` : ''}
+      <p class="sub">Visto por primera vez ${new Date(a.primera_vez).toLocaleString('es-CL')}${a.publicado ? ` · publicado ~${new Date(a.publicado).toLocaleDateString('es-CL')}`:''}</p>
+      <label class="sub">Mis notas</label><textarea id="nota" placeholder="Ej: llamar al corredor, visita jueves 18:00…">${esc(notas[a.id]||'')}</textarea>
+      ${a.descripcion ? `<h3 style="font-size:14px;margin:14px 0 4px">Descripción</h3><div class="desc">${esc(a.descripcion)}</div>` : ''}
+      <p style="margin-top:14px"><a href="${esc(a.url)}" target="_blank" rel="noopener">Abrir aviso en Portal Inmobiliario ↗</a></p>
+    </div>`;
+  dlg.showModal();
+  $('#nota').addEventListener('input', e => { const v = e.target.value.trim(); if(v) notas[id] = v; else delete notas[id]; LS.set('notas', notas) });
+  if(markers[id] && map){ map.setView(markers[id].getLatLng(), 15) }
+}
+
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-fav],[data-desc],[data-open],[data-close],[data-d],[data-c],[data-v]');
+  if(!t) return;
+  if(t.dataset.fav){ const id = t.dataset.fav; fav.has(id) ? fav.delete(id) : fav.add(id); LS.set('fav', [...fav]); render() }
+  else if(t.dataset.desc){ const id = t.dataset.desc; desc.has(id) ? desc.delete(id) : desc.add(id); LS.set('desc', [...desc]); render() }
+  else if(t.dataset.open){ e.preventDefault(); openDlg(t.dataset.open) }
+  else if('close' in t.dataset){ $('#dlg').close(); render() }
+  else if(t.dataset.d){ const n = +t.dataset.d; F.dorm = F.dorm.includes(n) ? F.dorm.filter(x => x !== n) : [...F.dorm, n]; update() }
+  else if(t.dataset.c){ const c = t.dataset.c; F.com = F.com.includes(c) ? F.com.filter(x => x !== c) : [...F.com, c]; update() }
+  else if(t.dataset.v){ F.vista = t.dataset.v; update() }
+});
+[['#fEst','est'],['#fMasc','masc'],['#fNuevos','nuevos'],['#fFav','fav'],['#fZona','zona'],['#fDesc','desc']]
+  .forEach(([s,k]) => $(s).addEventListener('click', () => { F[k] = !F[k]; update() }));
+$('#fPres').addEventListener('input', e => { F.pres = +e.target.value; $('#fPresV').textContent = clp(F.pres); guardarFiltros(); render() });
+$('#fQ').addEventListener('input', e => { F.q = e.target.value; guardarFiltros(); render() });
+$('#fOrd').addEventListener('change', e => { F.ord = e.target.value; update() });
+
+// ---- carga: buscador.py incrusta los datos en esta página cada vez que corre
+function iniciar(){
+  const d = window.BUSCADOR;
+  if(!d){ $('#list').innerHTML = '<div class="empty">Aún no hay datos. Ejecuta <code>py buscador.py</code> una vez.</div>'; return }
+  DATA = d;
+  if(F.pres == null) F.pres = d.meta.presupuesto;
+  syncControls(); initMap(); render();
+  const pts = d.avisos.filter(a => a.lat != null && a.activo && a.cumple && !a.duplicado_de).map(a => [a.lat, a.lon]);
+  if(map && pts.length) map.fitBounds(pts, {padding:[20,20], maxZoom:14});
+  const y = +sessionStorage.getItem('buscador.scroll'); if(y) window.scrollTo(0, y);
+}
+iniciar();
+// Auto-actualización: recarga la página cada 2 min (los filtros, favoritos y notas se conservan),
+// salvo que tengas abierta una ficha.
+setInterval(() => {
+  if($('#dlg').open) return;
+  try{ sessionStorage.setItem('buscador.scroll', window.scrollY) }catch(e){}
+  location.reload();
+}, 120000);
+</script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+{
+  "busqueda": {
+    "comunas": {
+      "las-condes-metropolitana": "Las Condes",
+      "providencia-metropolitana": "Providencia"
+    },
+    "dormitorios_min": 2,
+    "dormitorios_max": 3,
+    "banos_min": 2,
+    "presupuesto_total_clp": 1400000,
+    "incluir_edificios_multifamily": false,
+    "max_paginas_por_comuna": 15
+  },
+
+  "limites_por_comuna": {
+    "_nota": "lon_min = no mas al poniente que esa longitud. -70.6040 ~ Av. Los Leones: deja dentro Plaza Las Lilas (-70.594) y El Bosque (-70.602). Para ser mas estricto usa -70.598 (solo Las Lilas / Tobalaba).",
+    "Providencia": { "lon_min": -70.6040 },
+    "Las Condes": {}
+  },
+
+  "pesos_puntaje": {
+    "_nota": "Puntaje 0-100 de cada depto. precio_vs_mercado: UF/m2 vs mediana de comparables a 1 km; costo_total: arriendo+GGCC vs presupuesto; superficie: m2 utiles segun 2D/3D; ubicacion: distancia al Metro; extras: estacionamiento, bodega, antiguedad <=15 anos.",
+    "precio_vs_mercado": 30,
+    "costo_total": 15,
+    "superficie": 20,
+    "ubicacion": 20,
+    "extras": 15
+  },
+
+  "ggcc_estimado_por_m2_clp": 3000,
+  "uf_respaldo": 41000,
+  "dolar_respaldo": 950,
+
+  "pausa_entre_requests_seg": [1.5, 3.5],
+  "refrescar_detalle_cada_dias": 7,
+
+  "notificaciones": {
+    "windows": true,
+    "correo": {
+      "activo": false,
+      "smtp_host": "smtp.gmail.com",
+      "smtp_port": 587,
+      "usuario": "",
+      "destinatarios": [],
+      "_nota": "Este repo es publico: usuario, clave y destinatarios NO van aqui. En GitHub van como secretos SMTP_USUARIO, SMTP_PASSWORD y CORREO_DESTINO (separados por coma); en el PC, en el archivo .env. El correo se activa solo si existe SMTP_PASSWORD."
+    }
+  }
+}

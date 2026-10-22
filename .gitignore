@@ -1,0 +1,6 @@
+.env
+logs/
+data/
+dashboard.html
+*.tmp
+__pycache__/
