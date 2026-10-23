@@ -683,10 +683,35 @@ def notificar(cfg, nuevos, bajas, meta, carga_inicial):
 
 # ---------------------------------------------------------------- principal
 
+def proceso_vivo(pid):
+    if os.name != "nt":
+        try:
+            os.kill(pid, 0)
+            return True
+        except OSError:
+            return False
+    import ctypes
+    k = ctypes.windll.kernel32
+    h = k.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+    if not h:
+        return False
+    codigo = ctypes.c_ulong()
+    k.GetExitCodeProcess(h, ctypes.byref(codigo))
+    k.CloseHandle(h)
+    return codigo.value == 259  # STILL_ACTIVE
+
+
 def tomar_lock():
+    """Evita dos pasadas a la vez. Un lock de un proceso que ya no existe (PC suspendido, cierre forzado) se ignora."""
     DATA.mkdir(exist_ok=True)
     if LOCK.exists() and time.time() - LOCK.stat().st_mtime < 90 * 60:
-        return False
+        try:
+            pid = int(LOCK.read_text().strip())
+        except (ValueError, OSError):
+            pid = None
+        if pid and proceso_vivo(pid):
+            return False
+        log(f"Lock huerfano (pid {pid}) ignorado")
     LOCK.write_text(str(os.getpid()))
     return True
 
