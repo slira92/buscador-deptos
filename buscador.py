@@ -172,6 +172,19 @@ def a_clp(valor, moneda, uf, dolar):
     return round(valor)
 
 
+def esperar_red(max_seg=120):
+    """Al despertar de la suspension el Wi-Fi tarda en volver: espera hasta max_seg a que haya internet."""
+    t0 = time.time()
+    while time.time() - t0 < max_seg:
+        try:
+            requests.head("https://www.portalinmobiliario.com", headers=HEADERS, timeout=10)
+            return True
+        except requests.RequestException:
+            time.sleep(10)
+    log(f"Sin internet despues de {max_seg} s")
+    return False
+
+
 MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto",
          "septiembre", "octubre", "noviembre", "diciembre"]
 
@@ -732,6 +745,8 @@ def main():
     try:
         # Sigue siendo carga inicial hasta completar un recorrido entero (por si la primera se corta)
         carga_inicial = not meta_previa.get("carga_inicial_completa")
+        if not esperar_red():
+            return
         uf, dolar = indicadores(cfg, meta_previa)
         cli = Cliente(cfg["pausa_entre_requests_seg"])
         max_pag = args.max_paginas or cfg["busqueda"]["max_paginas_por_comuna"]
