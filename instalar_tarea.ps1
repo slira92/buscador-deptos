@@ -20,7 +20,9 @@ if ($Desinstalar) {
     return
 }
 $dir = $PSScriptRoot
-$pyw = (Get-Command pyw -ErrorAction Stop).Source
+# pythonw.exe real (no el alias pyw de WindowsApps, que a veces se cuelga al despertar el PC)
+$pyw = (& py -c "import sys, pathlib; print(pathlib.Path(sys.executable).with_name('pythonw.exe'))").Trim()
+if (-not (Test-Path $pyw)) { $pyw = (Get-Command pyw -ErrorAction Stop).Source }
 $accion = New-ScheduledTaskAction -Execute $pyw -Argument "`"$dir\buscador.py`"" -WorkingDirectory $dir
 if ($SoloSemana) {
     $trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday, Tuesday, Wednesday, Thursday, Friday -At $Desde

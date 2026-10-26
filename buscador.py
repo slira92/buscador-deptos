@@ -22,6 +22,7 @@ import smtplib
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from datetime import datetime, timedelta
 from email.mime.multipart import MIMEMultipart
@@ -763,9 +764,18 @@ def main():
         publicar_web(cfg)
         return
 
+    log(f"Arranque (pid {os.getpid()})")
     if not tomar_lock():
         log("Otra ejecucion sigue corriendo; salgo")
         return
+    # Vigilante: si la pasada se cuelga (red caida al despertar, DNS sin respuesta), se cierra sola y suelta el lock
+    def abortar():
+        log("Pasada colgada mas de 45 min; la cierro")
+        LOCK.unlink(missing_ok=True)
+        os._exit(1)
+    vigilante = threading.Timer(45 * 60, abortar)
+    vigilante.daemon = True
+    vigilante.start()
     t0 = time.time()
     try:
         # Sigue siendo carga inicial hasta completar un recorrido entero (por si la primera se corta)
