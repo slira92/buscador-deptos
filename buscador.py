@@ -788,7 +788,7 @@ def main():
             bloqueado, completas = str(e), False
             log(f"BLOQUEO: {e}")
 
-        nuevos, bajas, detalles = [], [], 0
+        nuevos, bajas, detalles, ultimo_guardado = [], [], 0, 0
         limite_detalle = datetime.now() - timedelta(days=cfg["refrescar_detalle_cada_dias"])
         for t in tarjetas:
             if t["id"] in vistos:
@@ -828,7 +828,8 @@ def main():
             elif a["cumple"] and a.get("bajo_precio", "")[:10] == ahora()[:10] and cambio_precio:
                 bajas.append(a)
             avisos[t["id"]] = a
-            if detalles and detalles % 25 == 0:
+            if detalles and detalles % 25 == 0 and detalles != ultimo_guardado:
+                ultimo_guardado = detalles
                 guardar({**avisos, "_meta": meta_previa})
                 marcar_duplicados(avisos)
                 analizar(avisos, cfg, uf)
